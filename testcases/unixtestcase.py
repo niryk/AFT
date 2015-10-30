@@ -24,11 +24,14 @@ class UnixTestCase(BasicTestCase):
     """
     _PROCESS_TEST_TIMEOUT = 10
 
-    def process_is_running(self):
+    def run(self, device):
+        return self.process_is_running(device)
+
+    def process_is_running(self, device):
         """
         Checks if the specified process is running.
         """
-        self["output"] = self["device"].execute(
+        self.output = device.execute(
             command=('ps', 'auxf', '|', 'grep', '-E', '"/' +
                      self["parameters"] + ' "', '|', 'grep', '-v', 'grep'),
             timeout=self._PROCESS_TEST_TIMEOUT, )

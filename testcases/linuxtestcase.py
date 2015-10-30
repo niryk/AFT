@@ -35,57 +35,64 @@ class LinuxTestCase(UnixTestCase):
     _SYSTEMD_SERVICE_TIMEOUT = 10
     _USER_SETUP_TIMEOUT = 10
 
-    def systemd_service_is_running(self):
+    def __init__(self, config):
+        super(LinuxtestCase, self).__init__(config)
+        self.user = config["user"]
+
+    def run(self, device):
+        return systemd_service_is_running(device) and gst_playback(device)
+
+    def systemd_service_is_running(self, device):
         """
         Checks if the specified systemd service is running.
         """
-        sys_cmd = ('sudo', '-u', self["user"], 'systemctl', 'status') + \
-                  tuple(self["parameters"].split())
-        self["output"] = self["device"].execute(
+        sys_cmd = ('sudo', '-u', self.user, 'systemctl', 'status') + \
+                  tuple(self.parameters.split())
+        self.output = device.execute(
             command=sys_cmd,
             environment=self._MEDIA_ENV,
             user="root", timeout=self._SYSTEMD_SERVICE_TIMEOUT, )
         return self._check_for_success()
 
-    def _deploy_file(self, payload, user, timeout):
+    def _deploy_file(self, payload, user, timeout, device):
         """
         Deploys a file to the target device.
         """
         #  Test for presence of the file
         full_path_to_payload = os.path.join(self._TEST_DATA_PATH, payload)
         if not os.path.isfile(full_path_to_payload):
-            self["output"] = "Error: media file \"{0}\" not found.".\
+            self.output = "Error: media file \"{0}\" not found.".\
                              format(full_path_to_payload)
             return False
         #  Push the file to the device
-        self["output"] = self["device"].push(source=full_path_to_payload,
+        self.output = device.push(source=full_path_to_payload,
                                              destination=self._DUT_TMP,
                                              user="root")
-        if self["output"] is not None:
+        if self.output != None:
             logging.critical("Couldn't copy {0} to {1}.\n{2}"
                              .format(full_path_to_payload, self._DUT_TMP,
-                                     self["output"]))
+                                     self.output))
             return False
-        self["output"] = self["device"].execute(
+        self.output = device.execute(
             environment=self._MEDIA_ENV,
-            command=('chown', '-R', self["user"],
+            command=('chown', '-R', self.user,
                      os.path.join(self._DUT_TMP, payload)),
             user="root", timeout=timeout)
         return True
 
-    def gst_playback(self, timeout=_DEFAULT_GST_PLAYBACK_TIMEOUT):
+    def gst_playback(self, device, timeout=_DEFAULT_GST_PLAYBACK_TIMEOUT):
         """
         Attempts to play a media file through the gstreamer interface.
         """
-        media_file = self["parameters"]
-        if not self._deploy_file(payload=media_file, user=self["user"],
-                                 timeout=timeout):
+        media_file = self.parameters
+        if not self._deploy_file(payload=media_file, user=self.user,
+                                 timeout=timeout, device=device):
             logging.critical("Failed to deploy file: {0}".format(media_file))
             return False
         # Play the media with gstreamer
-        self["output"] = self["device"].execute(
+        self.output = device.execute(
             environment=self._MEDIA_ENV,
-            command=('sudo', '-u', self["user"], 'gst-play-1.0',
+            command=('sudo', '-u', self.user, 'gst-play-1.0',
                      os.path.join(self._DUT_TMP, media_file)),
             user="root", timeout=timeout)
         return self._check_for_success()

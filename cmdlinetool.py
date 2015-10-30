@@ -17,7 +17,7 @@ Abstract Model of a Command Line tool.
 import abc
 import sys
 import logging
-import subprocess
+import subprocess32
 import multiprocessing
 
 from collections import namedtuple
@@ -54,11 +54,11 @@ class CmdLineTool(object):
         logging.info("Testing for presence of \"{0}\" command."
                      .format(cls.command))
         try:
-            subprocess.check_output(["which", cls.command],
-                                    stderr=subprocess.STDOUT)
+            subprocess32.check_output(["which", cls.command],
+                                    stderr=subprocess32.STDOUT)
             logging.info("Command {0} found.".format(cls.command))
             return True
-        except subprocess.CalledProcessError:
+        except subprocess32.CalledProcessError:
             logging.critical("Error: cannot locate {0} command."
                              .format(cls.command))
             if cls._exit_on_error:
@@ -101,9 +101,9 @@ def _runner(command, parms, result_q, verbose=False):
         command = (command,) + parms
         if verbose:
             logging.debug("{0}".format(command))
-        process = subprocess.Popen(command,
-                                   stderr=subprocess.STDOUT,
-                                   stdout=subprocess.PIPE,)
+        process = subprocess32.Popen(command,
+                                   stderr=subprocess32.STDOUT,
+                                   stdout=subprocess32.PIPE,)
         stdoutdata, stderrdata = process.communicate()
         result = CmdResult(returncode=process.returncode,
                            stdoutdata=stdoutdata,

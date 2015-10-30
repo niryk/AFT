@@ -18,7 +18,7 @@ can get an IP-address.
 import os
 import sys
 import logging
-import subprocess
+import subprocess32
 import distutils.dir_util
 import time
 import netifaces
@@ -28,7 +28,6 @@ import random
 from aft.device import Device
 from aft.tools.ssh import Ssh
 from aft.tools.scp import Scp
-from aft.tester import Tester
 
 VERSION = "0.1.0"
 
@@ -44,7 +43,7 @@ def _get_nth_parent_dir(path, parent):
         return path
     return _get_nth_parent_dir(os.path.dirname(path), parent - 1)
 
-def _log_subprocess_error(e):
+def _log_subprocess32_error(e):
     logging.critical(str(e.cmd) + "failed with error code: " + str(e.returncode) + " and output: " + str(e.output))
     logging.critical("Aborting")
     sys.exit(1)
@@ -65,19 +64,20 @@ class EdisonDevice(Device):
         try:
             logging.debug("EdisonDevice class init_data: {0}"
                           .format(init_data))
-            cls._leases_file_name = init_data["leases_file_name"]
-            cls._test_mode_name = init_data["test_mode"]
-            return Ssh.init() and Scp.init()
+            return True
         except KeyError as error:
             logging.critical("Error initializing Edison Device Class {0}."
                              .format(error))
             return False
 
-    def __init__(self, device_descriptor, channel):
+    def __init__(self, parameters, channel):
         super(EdisonDevice, self).__init__(device_descriptor=
-                                           device_descriptor,
+                                           parameters,
                                            channel=channel)
-        self._configuration = device_descriptor
+        Ssh.init()
+        Scp.init()
+
+        self._configuration = parameters
 
         self._cutter_dev_path = "/dev/ttyUSB" + self._configuration["channel"]
         self._usb_path = self._configuration["edison_usb_port"]
@@ -107,10 +107,10 @@ class EdisonDevice(Device):
         try:
             _make_directory(self._LOCAL_MOUNT_DIRECTORY)
             root_file_system_file = file_name + "." + self._root_extension
-            subprocess.check_call(["mount", root_file_system_file, self._LOCAL_MOUNT_DIRECTORY])
-        except subprocess.CalledProcessError as e:
+            subprocess32.check_call(["mount", root_file_system_file, self._LOCAL_MOUNT_DIRECTORY])
+        except subprocess32.CalledProcessError as e:
             logging.debug("Failed to mount. Is AFT run as root?")
-            _log_subprocess_error(e)
+            _log_subprocess32_error(e)
 
     def _add_usb_networking(self):
         logging.info("Injecting USB-networking service.")
@@ -205,11 +205,11 @@ class EdisonDevice(Device):
     def _unmount_local(self):
         logging.info("Flushing and unmounting the root filesystem.")
         try:
-            subprocess.check_call(["sync"])
-            subprocess.check_call(["umount", os.path.join(os.curdir, 
+            subprocess32.check_call(["sync"])
+            subprocess32.check_call(["umount", os.path.join(os.curdir, 
                                                     self._LOCAL_MOUNT_DIRECTORY)])
-        except subprocess.CalledProcessError as e:
-            _log_subprocess_error(e)
+        except subprocess32.CalledProcessError as e:
+            _log_subprocess32_error(e)
 
     def _reboot_device(self):
         self.channel.disconnect() #.call(["cutter_on_off", self._cutter_dev_path, "0"])
@@ -228,14 +228,14 @@ class EdisonDevice(Device):
                                     "--fwimage", "edison_ifwi-dbg-00.bin",
                                     "--osdnx", "edison_dnx_osr.bin"]
             self._reboot_device()
-            while (subprocess.call(xfstk_parameters) and attempts < 10):
+            while (subprocess32.call(xfstk_parameters) and attempts < 10):
                 logging.info("Rebooting and trying recovery flashing again. " + str(attempts))
                 self._reboot_device()
                 time.sleep(random.randint(10, 30))
                 attempts += 1
 
-        except subprocess.CalledProcessError as e:
-            _log_subprocess_error(e)
+        except subprocess32.CalledProcessError as e:
+            _log_subprocess32_error(e)
         except OSError as e:
             logging.critical("Failed recovery flashing, errno = " + str(e.errno) + ". Is the xFSTK tool installed?")
             sys.exit(1)
@@ -244,7 +244,7 @@ class EdisonDevice(Device):
         start = time.time()
         timeout = 15
         while time.time() - start < 15:
-            output = subprocess.check_output(["dfu-util", "-l", "-d", self._EDISON_DEV_ID])
+            output = subprocess32.check_output(["dfu-util", "-l", "-d", self._EDISON_DEV_ID])
             output_lines = output.split("\n")
             fitting_lines = [line for line in output_lines if 'path="' + self._usb_path + '"' in line]
             if fitting_lines:
@@ -258,7 +258,7 @@ class EdisonDevice(Device):
         attempt = 0
         while attempt < attempts:
             self._wait_for_device()
-            execution = subprocess.Popen(["dfu-util", "-v", "--path", self._usb_path, 
+            execution = subprocess32.Popen(["dfu-util", "-v", "--path", self._usb_path, 
                                           "--alt", alt, "-D", source] + extras, 
                                           stdout=flashing_log_file,
                                           stderr=flashing_log_file)
@@ -310,11 +310,11 @@ class EdisonDevice(Device):
         logging.info("Flashing complete.")
         return True
 
-    def test(self):
+    def test(self, test_case):
         self.open_interface()
-        enabler = subprocess.Popen(["python", os.path.join(os.path.dirname(__file__), os.path.pardir, "tools", "nicenabler.py"), self._usb_path, self._host_ip + "/30"])
+        enabler = subprocess32.Popen(["python", os.path.join(os.path.dirname(__file__), os.path.pardir, "tools", "nicenabler.py"), self._usb_path, self._host_ip + "/30"])
         self._wait_until_ssh_visible()
-        tester_result = Tester.test(device=self)
+        tester_result = test_case.run(self)
         enabler.kill()
         return tester_result
 
@@ -334,8 +334,8 @@ class EdisonDevice(Device):
         interface = self._get_usb_nic()
         ip_subnet = self._host_ip + "/30"
         logging.info("Opening the host network interface for testing.")
-        subprocess.check_call(["ifconfig", interface, "up"])
-        subprocess.check_call(["ifconfig", interface, ip_subnet])
+        subprocess32.check_call(["ifconfig", interface, "up"])
+        subprocess32.check_call(["ifconfig", interface, ip_subnet])
 
     def _wait_until_ssh_visible(self, timeout = 60):
         start = time.time()

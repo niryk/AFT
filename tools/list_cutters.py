@@ -12,13 +12,13 @@
 
 import fnmatch
 import os
-import subprocess
+import subprocess32
 
 accepted_devices = [("0b00", "3070"), ("10c4", "ea60")]
 
 def vidpid_filter(device):
     try:
-        device_info = subprocess.check_output(["udevadm", "info", device])
+        device_info = subprocess32.check_output(["udevadm", "info", device])
         device_lines = device_info.split("\n")
         vid_line = filter(lambda line : "ID_VENDOR_ID" in line, device_lines)[0]
         pid_line = filter(lambda line : "ID_MODEL_ID" in line, device_lines)[0]
@@ -28,7 +28,7 @@ def vidpid_filter(device):
         if (device_vid, device_pid) in accepted_devices:
             return True
         return False
-    except subprocess.CalledProcessError as e:
+    except subprocess32.CalledProcessError as e:
         return False
 
 def main():

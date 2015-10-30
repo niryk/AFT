@@ -16,10 +16,6 @@ Class representing a DUT.
 
 
 import abc
-from aft.tester import Tester
-
-VERSION = "0.1.0"
-
 
 class Device(object):
     """
@@ -31,20 +27,9 @@ class Device(object):
         self.name = device_descriptor["name"]
         self.model = device_descriptor["model"]
         self.dev_id = device_descriptor["id"]
+        self.test_plan = device_descriptor["test_plan"]
+        self.parameters = device_descriptor
         self.channel = channel
-        self.catalog_entry = device_descriptor["catalog_entry"]
-
-    @abc.abstractmethod
-    def is_in_test_mode(self):
-        """
-        Check if the device is in test mode.
-        """
-
-    @abc.abstractmethod
-    def is_in_service_mode(self):
-        """
-        Check if the device is in service mode.
-        """
 
     @abc.abstractmethod
     def write_image(self, file_name):
@@ -52,35 +37,36 @@ class Device(object):
         Writes the specified image to the device.
         """
 
-    def test(self):
+    def test(self, test_case):
         """
         Runs the tests associated with the specified image.
+        Visitor pattern.
         """
-        return Tester.test(device=self)
+        return test_case.run(self)
 
     def detach(self):
         """
         Open the associated cutter channel.
         """
-        return self.channel.disconnect()
+        self.channel.disconnect()
 
     def attach(self):
         """
         Close the associated cutter channel.
         """
-        return self.channel.connect()
+        self.channel.connect()
 
-    @abc.abstractmethod
     def execute(self, command, timeout, user="root", verbose=False):
         """
         Runs a command on the device and returns log and errorlevel.
         """
+        pass
 
-    @abc.abstractmethod
     def push(self, local_file, remote_file, user="root"):
         """
         Deploys a file from the local filesystem to the device (remote).
         """
+        pass
 
     @abc.abstractmethod
     def get_ip(self):

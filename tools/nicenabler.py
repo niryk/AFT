@@ -1,4 +1,4 @@
-import subprocess
+import subprocess32
 import os
 import netifaces
 import time
@@ -26,7 +26,7 @@ def wait_and_enable_nic(usb_path, ip):
         if not nic:
             time.sleep(1)
             continue
-        subprocess.check_call(["ifconfig", nic, ip])
+        subprocess32.check_call(["ifconfig", nic, ip])
         return
 
 

@@ -32,7 +32,7 @@ class PCDevice(Device):
     """
     Class representing a PC-like device.
     """
-    _MODE_TEST_TIMEOUT = 240
+    _BOOT_TIMEOUT = 240
     _POLLING_INTERVAL = 10
     _POWER_CYCLE_DELAY = 10
     _SSH_SHORT_GENERIC_TIMEOUT = 10
@@ -47,230 +47,161 @@ class PCDevice(Device):
         Initializer for class variables and parent class.
         """
         try:
-            logging.debug("PCDevice class init_data: {0}".
-                          format(init_data))
-            cls._leases_file_name = init_data["leases_file_name"]
-            cls._root_partition = init_data["root_partition"]
-            cls._service_mode_name = init_data["service_mode"]
-            cls._test_mode_name = init_data["test_mode"]
-            cls._registered_lease = None
-            return Ssh.init() and Scp.init()
+            return True
         except KeyError as error:
             logging.critical("Error initializing PC Device Class {0}."
                              .format(error))
             return False
 
-    def __init__(self, device_descriptor, channel):
+    def __init__(self, parameters, channel):
         super(PCDevice, self).__init__(device_descriptor=
-                                       device_descriptor,
+                                       parameters,
                                        channel=channel)
-        self.pem_interface = device_descriptor["pem_interface"]
-        self.pem_port = device_descriptor["pem_port"]
+        self._leases_file_name = parameters["leases_file_name"]
+        self._root_partition = parameters["root_partition"]
+        self._service_mode_name = parameters["service_mode"]
+        self._test_mode_name = parameters["test_mode"]
+        Ssh.init()
+        Scp.init()
+
+        self.pem_interface = parameters["pem_interface"]
+        self.pem_port = parameters["pem_port"]
         self._test_mode = {
             "name": self._test_mode_name,
-            "sequence": device_descriptor["catalog_entry"]
-                                         ["test_mode_keystrokes"]}
+            "sequence": parameters["test_mode_keystrokes"]}
         self._service_mode = {
             "name": self._service_mode_name,
-            "sequence": device_descriptor["catalog_entry"]
-                                         ["service_mode_keystrokes"]}
+            "sequence": parameters["service_mode_keystrokes"]}
         self._target_device = \
-            device_descriptor["catalog_entry"]["target_device"]
-        self._uses_hddimg = \
-            device_descriptor["catalog_entry"]["uses_hddimg"]
-        if self._uses_hddimg:
-            self._rootfs_filename = \
-                device_descriptor["catalog_entry"]["rootfs_filename"]
+            parameters["target_device"]
 
-    @classmethod
-    def get_all_registered_leases(cls):
+    def write_image(self, file_name):
         """
-        Returns all the current leases.
+        Method for writing an image to a device.
         """
-        with open(cls._leases_file_name) as leases_file:
-            return leases_file.readlines()
+        # NOTE: it is expected that the image is located somewhere
+        # underneath /home/tester, therefore symlinks outside of it
+        # will not work
+        # The /home/tester path is exported as nfs and mounted remotely as
+        # _IMG_NFS_MOUNT_POINT
+
+        # Bubblegum fix to support both .hddimg and .hdddirect at the same time 
+        if os.path.splitext(file_name)[-1] == ".hddimg":
+            self._uses_hddimg = True
+        else:
+            self._uses_hddimg = False
+        
+        self._enter_mode(self._service_mode)
+
+        file_on_nfs = os.path.abspath(file_name).replace("home/tester",
+                                             self._IMG_NFS_MOUNT_POINT)
+
+        if not self._flash_image(nfs_file_name=file_on_nfs):
+            logging.info("Flashing image failed")
+            return False
+        elif not self._install_tester_public_key():
+            logging.info("Couldn't install the SSH key")
+            return False
+
+        self._enter_mode(self._test_mode)
+        logging.info("Image {0} written.".format(file_name))
+        return True
 
     def get_ip(self):
-        return self.get_registered_leases()[0]
-
-    @classmethod
-    def get_registered_leases_by_mac(cls, mac):
-        """
-        Returns the leased ip for a specific mac.
-        """
-        leased_ips = []
-        for lease in cls.get_all_registered_leases():
-            requestor_mac, leased_ip = lease.split()[1:3]
-            if requestor_mac == mac:
-                logging.info("Found device with MAC {0}".format(mac) +
-                             " and IP {0}".format(leased_ip))
-                leased_ips.append(leased_ip)
-        if len(leased_ips) is 0:
-            logging.critical("Not found any IP lease for device with"
-                             "MAC {0}".format(mac))
-        return leased_ips
-
-    def get_registered_leases(self):
-        """
-        Returns the leased ip of the current device.
-        """
-        return self.get_registered_leases_by_mac(mac=self.dev_id)
-
-    @classmethod
-    def _by_ip_is_in_mode(cls, dev_ip, mode):
-        """
-        Check if the device with given ip is responsive to ssh
-        and in the specified mode.
-        """
-        logging.debug("Trying to ssh into {0} to test the mode.".format(dev_ip))
-        retval = Ssh.execute(dev_ip=dev_ip,
-                             command=("cat", "/proc/version", "|",
-                                      "grep", mode["name"]),
-                             timeout=cls._SSH_SHORT_GENERIC_TIMEOUT, )
-        if retval is None or retval.returncode is not 0:
-            logging.debug("Ssh failed.")
-        elif mode["name"] not in retval.stdoutdata:
-            logging.debug("Device not in \"{0}\" mode.".format(mode["name"]))
-        else:
-            logging.debug("Device in \"{0}\" mode.".format(mode["name"]))
-
-        return retval is not None and \
-               retval.returncode is 0 and \
-               mode["name"] in retval.stdoutdata
-
-    def by_ip_is_in_service_mode(self, dev_ip):
-        """
-        Check if the device is in service mode.
-        """
-        return self._by_ip_is_in_mode(dev_ip=dev_ip, mode=self._service_mode)
-
-    def by_ip_is_in_test_mode(self, dev_ip):
-        """
-        Check if the device is in test mode.
-        """
-        return self._by_ip_is_in_mode(dev_ip=dev_ip, mode=self._test_mode)
-
-    @classmethod
-    def _by_ip_is_responsive(cls, dev_ip):
-        """
-        Check if the device is in service mode.
-        """
-        logging.debug("Trying to ssh into {0}.".format(dev_ip))
-        result = Ssh.execute(dev_ip=dev_ip,
-                             command=("echo", "$?"),
-                             timeout=cls._SSH_SHORT_GENERIC_TIMEOUT, )
-        logging.debug("result: {0}".format(result))
-        if (result is None) or (result.returncode is not 0):
-            logging.debug("Ssh failed.")
-        else:
-            logging.debug("Ssh successful.")
-        return (result is not None) and (result.returncode is 0)
-
-    def _is_in_mode(self, mode):
         """
         Check if the device is responsive to ssh
-        and in specified mode.
         """
-        return self._by_ip_is_in_mode(mode=mode,
-                                    dev_ip=self.get_registered_leases())
-
-    def is_in_service_mode(self):
-        """
-        Check if the device is in service mode.
-        """
-        return self._is_in_mode(mode=self._service_mode)
-
-    def is_in_test_mode(self):
-        """
-        Check if the device is in service mode.
-        """
-        return self._is_in_mode(mode=self._test_mode)
-
-    def _is_responsive(self):
-        """
-        Check if the device is responsive to ssh
-        and in specified mode.
-        """
-        leases = self.get_registered_leases()
-        for lease in leases:
-            if self._by_ip_is_responsive(dev_ip=lease):
-                return lease
-        return None
+        leases = open(self._leases_file_name).readlines()
+        filtered_leases = filter(lambda line : self.dev_id in line, leases)
+        # dnsmasq.leases contains rows with "<mac> <ip> <hostname> <domain>"
+        ip_addresses = map(lambda line : line.split()[2], filtered_leases)
+        
+        for ip in ip_addresses:
+            result = Ssh.execute(dev_ip=ip, command=("echo", "$?"),
+                                 timeout=self._SSH_SHORT_GENERIC_TIMEOUT, )
+            if (result != None) and (result.returncode == 0):
+                return ip
 
     def _power_cycle(self):
         """
         Reboot the device.
         """
-        logging.info("Attempting to reboot the device.")
-        if not self.detach():
-            logging.critical("Failed cutting power when attempting reboot.")
-            return False
+        logging.info("Rebooting the device.")
+        self.detach()
         time.sleep(self._POWER_CYCLE_DELAY)
-        if not self.attach():
-            logging.critical("Failed restoring power when attempting reboot.")
-            return False
-        logging.info("Completed rebooting the device.")
-        return True
-
-    def _wait_for_mode(self, mode):
-        """
-        For a limited amount of time, try to assess if the device
-        is in the mode requested.
-        """
-        logging.info("Check if device is in mode {0} .".format(mode["name"]))
-        for _ in range(self._MODE_TEST_TIMEOUT / self._POLLING_INTERVAL):
-            responsive_ip = self._is_responsive()
-            if responsive_ip is not None:
-                self._registered_lease = responsive_ip
-                return self._by_ip_is_in_mode(mode=mode, dev_ip=responsive_ip)
-            else:
-                logging.info("Device not responding - waiting {0} seconds."
-			     .format(self._POLLING_INTERVAL))
-                time.sleep(self._POLLING_INTERVAL)
-        logging.info("Device {0} is not in mode {1} ."
-                     .format(self.get_registered_leases(), mode["name"]))
-        return False
+        self.attach()
 
     def _enter_mode(self, mode):
         """
         Tries to put the device into the specified mode.
         """
-        # Attempts twice but one should be sufficient.
-        for _ in range(8):
+        # Sometimes booting to a mode fails.
+        attempts = 8
+        logging.info("Trying to enter " + mode["name"] + " mode up to " + str(attempts) + " times.")
+        for _ in range(attempts):
             self._power_cycle()
-            logging.debug("Going to execute:\n" +
-			  "pem" +
-                          " --interface {0}".format(self.pem_interface) +
-                          " --port {0}".format(self.pem_port) +
-                          " --playback {0}".format(mode["sequence"]))
-            pem_main(["pem",
-                      "--interface", self.pem_interface,
+
+            logging.info("Executing PEM with keyboard sequence " + mode["sequence"])
+            pem_main(["pem", "--interface", self.pem_interface,
                       "--port", self.pem_port,
                       "--playback", mode["sequence"]])
-            logging.info("Checking for device in mode \"{0}\" ."
-                         .format(mode["name"]))
-            if self._wait_for_mode(mode=mode):
-                logging.info("Found device in mode \"{0}\" ."
-                             .format(mode["name"]))
-                return True
+
+            ip = self._wait_for_responsive_ip()
+
+            if ip:
+                if self._verify_mode(ip, mode["name"]):
+                    return
             else:
-                logging.info("Device in mode \"{0}\" was not found."
-                             .format(mode["name"]))
+                logging.warning("Failed entering " + mode["name"] + " mode.")
+
         logging.critical("Unable to get device {0} in mode \"{1}.\""
                          .format(self.dev_id, mode["name"]))
-        return False
+        raise LookupError("Could not set the device in mode " + mode["name"])
 
-    def _write_image(self, nfs_file_name):
+    def _wait_for_responsive_ip(self):
+        """
+        For a limited amount of time, try to assess if the device
+        is in the mode requested.
+        """
+        logging.info("Waiting for the device to become responsive")
+        for _ in range(self._BOOT_TIMEOUT / self._POLLING_INTERVAL):
+            responsive_ip = self.get_ip()
+            if not responsive_ip:
+                time.sleep(self._POLLING_INTERVAL)
+                continue
+            logging.info("Got a respond from " + responsive_ip)
+            return responsive_ip
+
+    def _verify_mode(self, dev_ip, mode):
+        """
+        Check if the device with given ip is responsive to ssh
+        and in the specified mode.
+        """
+        retval = Ssh.execute(dev_ip=dev_ip,
+                             command=("cat", "/proc/version", "|",
+                                      "grep", mode),
+                             timeout=self._SSH_SHORT_GENERIC_TIMEOUT, )
+        if retval is None or retval.returncode is not 0:
+            logging.debug("Ssh failed.")
+        elif mode not in retval.stdoutdata:
+            logging.debug("Device not in \"{0}\" mode.".format(mode))
+        else:
+            logging.debug("Device in \"{0}\" mode.".format(mode))
+
+        return retval is not None and \
+               retval.returncode is 0 and \
+               mode in retval.stdoutdata
+
+    def _flash_image(self, nfs_file_name):
         """
         Writes image into the internal storage of the device.
         """
-        time.sleep(7)
         logging.info("Mounting the nfs containing the image to flash.")
-	result = self.execute(
+        result = self.execute(
             command=("mount", self._IMG_NFS_MOUNT_POINT),
             timeout=self._SSH_SHORT_GENERIC_TIMEOUT,
         )
-        if result is None:
+        if result == None:
             logging.critical("Failed to interact with the device.")
             return False
         logging.info("Testing for availability of image {0} ."
@@ -282,7 +213,7 @@ class PCDevice(Device):
             verbose=True,
         )
         logging.info(result)
-        if result is not None and "found" in result.stdoutdata:
+        if result != None and "found" in result.stdoutdata:
             logging.info("Image found.")
         else:
             logging.critical("Image \"{0}\" not found."
@@ -293,14 +224,14 @@ class PCDevice(Device):
         result = self.execute(command=("bmaptool", "copy", "--nobmap",
                                        nfs_file_name, self._target_device),
                               timeout=self._SSH_IMAGE_WRITING_TIMEOUT,)
-        if result is not None and result.returncode is 0:
+        if result != None and result.returncode == 0:
             logging.info("Image written successfully.")
         else:
             logging.critical("Error while writing image to device.")
             return False
         result = self.execute(command=("partprobe", ),
 				timeout=self._SSH_SHORT_GENERIC_TIMEOUT, )
-        if result is not None and result.returncode is 0:
+        if result != None and result.returncode == 0:
             logging.info("Partprobed succesfully.")
             return True
         else:
@@ -310,10 +241,10 @@ class PCDevice(Device):
     def _mount_single_layer(self):
         logging.info("mount one layer")
         result = self.execute(
-            command=("mount", self._target_device + self._root_partition,
+            command=("mount", self._root_partition,
                      self._ROOT_PARTITION_MOUNT_POINT),
                      timeout=self._SSH_SHORT_GENERIC_TIMEOUT, )
-        if result is None or result.returncode is not 0:
+        if result is None or result.returncode != 0:
             logging.critical("Failed mounting internal storage.\n{0}"
                              .format(result))
 #           return False        
@@ -425,72 +356,12 @@ class PCDevice(Device):
         logging.info("Public key written successfully to device.")
         return True
 
-    def _confirm_image(self, file_name):
-        """
-        Confirm that the image booted is the one the one received.
-        """
-        try:
-            result = self.execute(
-                command=("cat", "/etc/os-release", "|", "grep", "BUILD_ID"),
-                timeout=self._SSH_SHORT_GENERIC_TIMEOUT, )
-            if result is None or result.returncode is not 0:
-                logging.critical("Failed locating the BUILD_ID value")
-                return False
-            build_id_row = result.stdoutdata
-            # The string expected is in the format:
-            # "BUILD_ID=xxxxx\n"
-            # and we want to match the xxxxxx against file_name
-            if file_name.split(".")[0] in build_id_row.split("=")[1].strip():
-                return True
-        except (AttributeError, IndexError) as error:
-            logging.warn("Error: {0}\n".format(error))
-        logging.warn("Could not find correct build id:\n"
-                     "Image used: {0}\n".format(file_name) +
-                     "Found:\n {0}\n".format(build_id_row))
-        return False
-
-    def write_image(self, file_name):
-        """
-        Method for writing an image to a device.
-        """
-        # NOTE: it is expected that the image is located somewhere
-        # underneath /home/tester, therefore symlinks outside of it
-        # will not work
-        # The /home/tester path is exported as nfs and mounted remotely as
-        # _IMG_NFS_MOUNT_POINT
-
-        # Bubblegum fix to support both .hddimg and .hdddirect at the same time 
-        if os.path.splitext(file_name)[-1] == ".hddimg":
-            self._uses_hddimg = True
-        else:
-            self._uses_hddimg = False
-
-        if not os.path.isfile(file_name):
-            logging.critical("Test file {0} not found.".format(file_name))
-        elif not self._enter_mode(self._service_mode):
-            logging.critical("Could not put device in service mode.")
-        elif not self._write_image(nfs_file_name=
-                                   os.path.abspath(file_name).
-                                     replace("home/tester",
-                                             self._IMG_NFS_MOUNT_POINT)):
-            logging.critical("Could not write image to storage.")
-        elif not self._install_tester_public_key():
-            logging.critical("Could not install tester public key.")
-        elif not self._enter_mode(self._test_mode):
-            logging.critical("Could not enter test mode.")
-#        elif not self._confirm_image(file_name):
-#            logging.critical("Could not confirm image.")
-        else:
-            logging.info("Image {0} written.".format(file_name))
-            return True
-        return False
-
     def execute(self, command, timeout, environment=(),
                 user="root", verbose=False):
         """
         Runs a command on the device and returns log and errorlevel.
         """
-        return Ssh.execute(dev_ip=self._registered_lease, timeout=timeout,
+        return Ssh.execute(dev_ip=self.get_ip(), timeout=timeout,
                            user=user, environment=environment, command=command,
                            verbose=verbose)
 
@@ -498,5 +369,5 @@ class PCDevice(Device):
         """
         Deploys a file from the local filesystem to the device (remote).
         """
-        return Scp.push(self._registered_lease, source=source,
+        return Scp.push(self.get_ip(), source=source,
                         destination=destination, user=user)
