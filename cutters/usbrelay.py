@@ -14,11 +14,11 @@
 Tool for handling Usbrelay USB Cutter devices.
 """
 
-import logging
 import subprocess32
 import os
 
 from aft.cutter import Cutter
+
 
 class Usbrelay(Cutter):
     """
@@ -32,12 +32,12 @@ class Usbrelay(Cutter):
 
     def connect(self):
         subprocess32.check_call(["python", self.cutter_controller,
-                              self._cutter_dev_path, "1"],
-                              stdout = open(os.devnull, "w"), 
-                              stderr = open(os.devnull, "w"))
+                                 self._cutter_dev_path, "1"],
+                                stdout=open(os.devnull, "w"),
+                                stderr=open(os.devnull, "w"))
 
     def disconnect(self):
         subprocess32.check_call(["python", self.cutter_controller,
-                              self._cutter_dev_path, "0"],
-                              stdout = open(os.devnull, "w"), 
-                              stderr = open(os.devnull, "w"))
+                                 self._cutter_dev_path, "0"],
+                                stdout=open(os.devnull, "w"),
+                                stderr=open(os.devnull, "w"))

@@ -10,12 +10,16 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the GNU General Public License for more details.
 
+"""
+Module responsible of constructing AFT test cases
+"""
+
 import aft.testcases.linuxtestcase
 import aft.testcases.basictestcase
 import aft.testcases.qatestcase
 import aft.testcases.unixtestcase
 
-_test_cases = {
+_TEST_CASES = {
     "qatestcase" : aft.testcases.qatestcase.QATestCase,
     "unixtestcase" : aft.testcases.unixtestcase.UnixTestCase,
     "basictestcase" : aft.testcases.basictestcase.BasicTestCase,
@@ -23,4 +27,9 @@ _test_cases = {
 }
 
 def build_test_case(parameters):
-	return _test_cases[parameters["test_case"]](parameters)
+    """
+    Constructs and returns an AFT test case based on the dictionary
+    argument parameters. The type of test is defined by the entry
+    'test_case' in the dictionary.
+    """
+    return _TEST_CASES[parameters["test_case"]](parameters)

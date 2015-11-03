@@ -16,8 +16,6 @@ Unix Test Case class.
 
 from aft.testcases.basictestcase import BasicTestCase
 
-
-# pylint: disable=R0904
 class UnixTestCase(BasicTestCase):
     """
     Unix Test Case executor.
@@ -36,4 +34,3 @@ class UnixTestCase(BasicTestCase):
                      self["parameters"] + ' "', '|', 'grep', '-v', 'grep'),
             timeout=self._PROCESS_TEST_TIMEOUT, )
         return self._check_for_success()
-# pylint: enable=R0904

@@ -20,7 +20,6 @@ import logging
 from aft.testcases.unixtestcase import UnixTestCase
 
 
-# pylint: disable=R0904
 class LinuxTestCase(UnixTestCase):
     """
     Linux Test Case executor.
@@ -36,18 +35,18 @@ class LinuxTestCase(UnixTestCase):
     _USER_SETUP_TIMEOUT = 10
 
     def __init__(self, config):
-        super(LinuxtestCase, self).__init__(config)
+        super(LinuxTestCase, self).__init__(config)
         self.user = config["user"]
 
     def run(self, device):
-        return systemd_service_is_running(device) and gst_playback(device)
+        return self.systemd_service_is_running(device) and self.gst_playback(device)
 
     def systemd_service_is_running(self, device):
         """
         Checks if the specified systemd service is running.
         """
         sys_cmd = ('sudo', '-u', self.user, 'systemctl', 'status') + \
-                  tuple(self.parameters.split())
+            tuple(self.parameters.split())
         self.output = device.execute(
             command=sys_cmd,
             environment=self._MEDIA_ENV,
@@ -62,14 +61,15 @@ class LinuxTestCase(UnixTestCase):
         full_path_to_payload = os.path.join(self._TEST_DATA_PATH, payload)
         if not os.path.isfile(full_path_to_payload):
             self.output = "Error: media file \"{0}\" not found.".\
-                             format(full_path_to_payload)
+                format(full_path_to_payload)
             return False
         #  Push the file to the device
         self.output = device.push(source=full_path_to_payload,
-                                             destination=self._DUT_TMP,
-                                             user="root")
+                                  destination=self._DUT_TMP,
+                                  user=user)
         if self.output != None:
-            logging.critical("Couldn't copy {0} to {1}.\n{2}"
+            logging.critical("Couldn't copy " + str(full_path_to_payload) + " to " +
+                             str(self._DUT_TMP) + ".\n" + str(self.output)
                              .format(full_path_to_payload, self._DUT_TMP,
                                      self.output))
             return False
@@ -87,7 +87,7 @@ class LinuxTestCase(UnixTestCase):
         media_file = self.parameters
         if not self._deploy_file(payload=media_file, user=self.user,
                                  timeout=timeout, device=device):
-            logging.critical("Failed to deploy file: {0}".format(media_file))
+            logging.critical("Failed to deploy file: " + str(media_file))
             return False
         # Play the media with gstreamer
         self.output = device.execute(
@@ -96,4 +96,3 @@ class LinuxTestCase(UnixTestCase):
                      os.path.join(self._DUT_TMP, media_file)),
             user="root", timeout=timeout)
         return self._check_for_success()
-# pylint: enable=R0904

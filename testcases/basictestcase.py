@@ -15,11 +15,10 @@ Basic Test Case class.
 """
 import logging
 import subprocess32
+import re
 
 from aft.testcase import TestCase
 
-
-# pylint: disable=no-init
 class BasicTestCase(TestCase):
     """
     Simple Test Case executor.
@@ -31,11 +30,17 @@ class BasicTestCase(TestCase):
         self.parameters = config["parameters"]
         self.pass_regex = config["pass_regex"]
 
-    def run_local_command(self, device):
+    def run(self, device):
+        self.run_remote_command(device)
+
+    def run_local_command(self):
         """
         Executes a command locally, on the test harness.
         """
-        process = subprocess32.Popen(self.parameters.split(), universal_newlines=True, stderr=subprocess32.STDOUT, stdout=subprocess32.PIPE)
+        process = subprocess32.Popen(self.parameters.split(),
+                                     universal_newlines=True,
+                                     stderr=subprocess32.STDOUT,
+                                     stdout=subprocess32.PIPE)
         self.output = process.communicate()[0]
         return True
 
@@ -43,11 +48,8 @@ class BasicTestCase(TestCase):
         """
         Executes a command remotely, on the device.
         """
-        self.output = device.execute(
-            command=tuple(self["parameters"].split()),
-            timeout=120, )
-        logging.debug("Command: {0}\nresult: {1}".
-                      format(self.parameters, self.output))
+        self.output = device.execute(self["parameters"].split(), timeout=120)
+        logging.debug("Command: " + str(self.parameters) + "\nresult: " + str(self.output) + ".")
         return self._check_for_success()
 
     def _check_for_success(self):
@@ -56,25 +58,21 @@ class BasicTestCase(TestCase):
         """
         logging.info("self.output " + self.output)
         if self.output == None or self.output.returncode != 0:
-            logging.info("Test Failed: returncode {0}"
-                         .format(self.output.returncode))
+            logging.info("Test Failed: returncode " + str(self.output.returncode))
             if self.output != None:
-              logging.info("stdout:\n{0}".format(self.output.stdoutdata))
-              logging.info("stderr:\n{0}".format(self.output.stderrdata))
+                logging.info("stdout:\n" + str(self.output.stdoutdata))
+                logging.info("stderr:\n" + str(self.output.stderrdata))
         elif self.pass_regex == "":
             logging.info("Test passed: returncode 0, no pass_regex")
             return True
         else:
             for line in self.output.stdoutdata.splitlines():
                 if re.match(self.pass_regex, line) != None:
-                    logging.info("Test passed: returncode 0 "
-                                 "Matching pass_regex {0}"
-                                 .format(self["pass_regex"]))
+                    logging.info("Test passed: returncode 0 " +
+                                 "Matching pass_regex " + str(self.pass_regex))
                     return True
-            else:
-                 logging.info("Test failed: returncode 0\n"
-                              "But could not find matching pass_regex {0}"
-                              .format(self["pass_regex"]))
+                else:
+                    logging.info("Test failed: returncode 0\n" +
+                                 "But could not find matching pass_regex " +
+                                 str(self["pass_regex"]))
         return False
-
-# pylint: enable=no-init

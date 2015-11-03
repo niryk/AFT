@@ -10,37 +10,36 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the GNU General Public License for more details.
 
+"""
+AFT installation module
+"""
+
 import os
 from setuptools import setup
 
-config_files = ["config/platform.cfg",
+CONFIG_FILES = ["config/platform.cfg",
                 "config/catalog.cfg",
                 "config/topology.cfg"]
-test_plans = ["test_plan/iot_qatest.cfg"]
+TEST_PLANS = ["test_plan/iot_qatest.cfg"]
 
-config_filter = lambda file : not os.path.isfile(os.path.join("/etc/aft", file))
-config_files = filter(config_filter, config_files)
-test_plans = filter(config_filter, test_plans)
+CONFIG_FILTER = lambda filename : not os.path.isfile(os.path.join("/etc/aft", filename))
+CONFIG_FILES = [filename for filename in CONFIG_FILES if CONFIG_FILTER(filename)]
+TEST_PLANS = [filename for filename in TEST_PLANS if CONFIG_FILTER(filename)]
 
 setup(
     name = "aft",
-    version = "1.0.0a2",
-    description = "Automated Flasher Tester 2",
+    version = "1.0.0a3",
+    description = "Automated Flasher Tester",
     author = "Igor Stoppa & Topi Kuutela",
     author_email = "igor.stoppa@intel.com & topi.kuutela@intel.com",
     url = "github",
     packages = ["aft"],
     package_dir = {"aft" : "."},
-    package_data = {
-                    "aft" : ["cutters/*.py",
+    package_data = {"aft" : ["cutters/*.py",
                              "devices/*.py", "devices/data/*",
                              "testcases/*.py",
-                             "tools/*.py"]
-                    },
+                             "tools/*.py"]},
     install_requires = ["netifaces", "subprocess32"],
     entry_points = { "console_scripts" : ["aft=aft.main:main"] },
-    data_files = [
-                  ("/etc/aft/config/", config_files),
-                  ("/etc/aft/test_plan/", test_plans)
-                  ]
-      )
+    data_files = [("/etc/aft/config/", CONFIG_FILES),
+                  ("/etc/aft/test_plan/", TEST_PLANS)])

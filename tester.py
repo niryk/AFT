@@ -22,8 +22,6 @@ import logging
 
 import aft.testcasefactory
 
-VERSION = "1.0.0"
-
 class Tester(object):
     """
     Class representing a Tester interface.
@@ -42,7 +40,8 @@ class Tester(object):
         test_plan_config.read(test_plan_file)
 
         if len(test_plan_config.sections()) == 0:
-            raise IOError("Test plan " + str(test_plan_name) + " (" + str(test_plan_file) + ") doesn't have any test cases. Does the file exist?")
+            raise IOError("Test plan " + str(test_plan_name) + " (" + str(test_plan_file) +
+                          ") doesn't have any test cases. Does the file exist?")
 
         for test_case_name in test_plan_config.sections():
             test_case_config = dict(test_plan_config.items(test_case_name))
@@ -62,8 +61,7 @@ class Tester(object):
         logging.info("Test plan start time: " + str(self._start_time))
 
         for index, test_case in enumerate(self.test_cases, 1):
-            logging.info("Executing test case {0} of {1}"
-                         .format(index, len(self.test_cases)))
+            logging.info("Executing test case " + str(index) + " of " + str(self.test_cases))
             test_case.execute(self._device)
             self._results.append(test_case.result)
 
@@ -91,8 +89,13 @@ class Tester(object):
         xml.append('</testsuite>\n')
         return "".join(xml)
 
+# pylint: disable=no-self-use
     def get_results_location(self):
+        """
+        Returns the file path of the results xml-file.
+        """
         return os.path.join(os.getcwd(), "results.xml")
+#pylint: enable=no-self-use
 
     def _save_test_results(self):
         """
@@ -103,4 +106,4 @@ class Tester(object):
         results_filename = self.get_results_location()
         with open(results_filename, "w") as results_file:
             results_file.write(xunit_results)
-        logging.info("Results saved to {0}.".format(results_filename))
+        logging.info("Results saved to " + str(results_filename) + ".")

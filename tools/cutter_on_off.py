@@ -1,28 +1,35 @@
+"""
+Script to turn on and off a USB-powercutter
+"""
+
 import serial
 import sys
 import time
 
 def show_help():
-    print "%s port [0|1]" % (sys.argv[0])
+    """
+    Print help
+    """
+    print sys.argv[0] + " port [0|1]"
     sys.exit(1)
 if len(sys.argv) < 3 :
     show_help()
 
-port = sys.argv[1]
-action = sys.argv[2]
+PORT = sys.argv[1]
+ACTION = sys.argv[2]
 
 
-ser=serial.Serial(port, 9600)
+SER = serial.Serial(PORT, 9600)
 # disconnect
-if str(action) == '0' :
-    ser.write('\xFE\x05\x00\x00\x00\x00\xD9\xC5')
+if str(ACTION) == '0' :
+    SER.write('\xFE\x05\x00\x00\x00\x00\xD9\xC5')
 # connect
-elif str(action) == '1' :
-    ser.write('\xFE\x05\x00\x00\xFF\x00\x98\x35')
+elif str(ACTION) == '1' :
+    SER.write('\xFE\x05\x00\x00\xFF\x00\x98\x35')
     
 else:
     show_help()
 
 time.sleep(1)
-ser.close()
+SER.close()
 

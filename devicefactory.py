@@ -10,27 +10,35 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the GNU General Public License for more details.
 
-import logging
+"""
+Factory module for creation of AFT device instances and their cutter objects
+"""
 
 import aft.devices.edisondevice
 import aft.devices.pcdevice
 import aft.cutters.clewarecutter
 import aft.cutters.usbrelay
 
-_device_classes = {
+_DEVICE_CLASSES = {
     "edison" : aft.devices.edisondevice.EdisonDevice,
     "pc" : aft.devices.pcdevice.PCDevice
 }
-_cutter_classes = {
+_CUTTER_CLASSES = {
     "clewarecutter" : aft.cutters.clewarecutter.ClewareCutter,
     "usbrelay" : aft.cutters.usbrelay.Usbrelay
 }
 
 
 def build_cutter(config):
-	cutter_class = _cutter_classes[config["cutter_type"].lower()]
-	return cutter_class(config)
+    """
+    Construct a (power) cutter instance of type config["cutter_type"].
+    """
+    cutter_class = _CUTTER_CLASSES[config["cutter_type"].lower()]
+    return cutter_class(config)
 
 def build_device(config, cutter):
-	device_class = _device_classes[config["platform"].lower()]
-	return device_class(config, cutter)
+    """
+    Construct a device instance of type config["platform"]
+    """
+    device_class = _DEVICE_CLASSES[config["platform"].lower()]
+    return device_class(config, cutter)

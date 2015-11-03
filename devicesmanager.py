@@ -17,7 +17,9 @@ import ConfigParser
 import time
 import atexit
 import os
+import sys
 import fcntl
+import errno
 
 import aft.devicefactory as devicefactory
 
@@ -35,7 +37,9 @@ class DevicesManager(object):
         Based on command-line arguments and configuration files, construct
         all the devices of the correct model.
         """
-        self._resereved_device = None
+        self._machine_type = args.machine.lower()
+        self._reserved_device = None
+        self._lockfile = None
 
         device_configs = self._construct_configs(args)
         self._devices = []
@@ -48,8 +52,6 @@ class DevicesManager(object):
         """
         Find and merge the device configurations on per-device basis.
         """
-        self._machine_type = args.machine
-
         platform_config_file = self.__PLATFORM_FILE_NAME
         catalog_config_file = args.catalog
         topology_config_file = args.topology
@@ -66,7 +68,7 @@ class DevicesManager(object):
         for device_title in topology_config.sections():
             device_entry = dict(topology_config.items(device_title))
             device_entry["name"] = device_title
-            if device_entry["model"].lower() != self._machine_type.lower():
+            if device_entry["model"].lower() != args.machine.lower():
                 continue
 
             catalog_entry = dict(catalog_config.items(device_entry["model"]))
@@ -80,8 +82,12 @@ class DevicesManager(object):
             configs.append(device_params)
 
         if len(configs) == 0:
-            raise IOError("Could not construct any device configurations for device of type " + str(self._machine_type) + ". Does the topology file (" + topology_config_file + ") have any sections with model = " + str(self._machine_type) + "?")
-        logging.info("Built configuration sets for " + str(len(configs)) + " devices of type " + str(self._machine_type))
+            raise IOError("Could not construct any device configurations for device of " +
+                          "type " + str(args.machine) + ". Does the topology file (" +
+                          topology_config_file + ") have any sections with model = " +
+                          str(args.machine) + "?")
+        logging.info("Built configuration sets for " + str(len(configs)) +
+                     " devices of type " + str(args.machine))
 
         return configs
 
@@ -92,7 +98,6 @@ class DevicesManager(object):
         start = time.time()
         while time.time() - start < timeout:
             for device in self._devices:
-                present = True
                 logging.info("Attempting to acquire " + device.name)
                 try:
                     # This is a non-atomic operation which may cause trouble
@@ -103,8 +108,8 @@ class DevicesManager(object):
                     fcntl.flock(self._lockfile, fcntl.LOCK_EX | fcntl.LOCK_NB)
 
                     logging.info("Device acquired.")
-                    self.reserved_device = device
-                    atexit.register(self._release)
+                    self._reserved_device = device
+                    atexit.register(self.release)
                     return device
                 except IOError as err:
                     if err.errno in {errno.EACCES, errno.EAGAIN}:
@@ -114,15 +119,16 @@ class DevicesManager(object):
                         sys.exit(-1)
             logging.info("All devices busy ... waiting 10 seconds and trying again.")
             time.sleep(10)
-        raise IOError("Could not reserve a " + self._machine_type + "-device in " + str(timeout) + " seconds.")
+        raise IOError("Could not reserve a " + self._machine_type + "-device in " +
+                      str(timeout) + " seconds.")
 
-    def _release(self):
+    def release(self):
         """
         Put the reserved device back to the pool. It will happen anyway when
         the process dies, but this removes the stale lockfile.
         """
         if self._lockfile:
             self._lockfile.close()
-        if self.reserved_device:
+        if self._reserved_device:
             os.unlink(os.path.join(self._LOCK_ROOT,
-                                   "aft_" + self.reserved_device.dev_id))
+                                   "aft_" + self._reserved_device.dev_id))

@@ -16,18 +16,12 @@ Class representing a Test Case.
 """
 
 import os
-import re
 import datetime
 import logging
 import abc
 
 VERSION = "0.1.0"
 
-
-# Disable "Too few public methods."
-# This class is meant to perform one single task
-# and therefore requires only one public method
-# pylint: disable=too-few-public-methods
 class TestCase(object):
     """
     Class providing the foundations for a Test Case.
@@ -35,16 +29,16 @@ class TestCase(object):
     __metaclass__ = abc.ABCMeta
     _TEST_EXEC_ROOT = os.getenv("AFT_EXECROOT", "./aft_results.")
 
-# pylint: disable=too-many-arguments
     def __init__(self, config):
         self.name = config["name"]
         self.test_case = config["test_case"]
         self.config = config
-        self.result = None # Each test is responsible of setting self.result to True if test was succesful or False if test failed
+        # Each test is responsible of setting self.result to True
+        # if test was succesful or False if test failed
+        self.result = None
         self.duration = None
         self.xunit_section = ""
 
-# pylint: enable=too-many-arguments
     @abc.abstractmethod
     def run(self, device):
         """
@@ -73,7 +67,7 @@ class TestCase(object):
                           self.duration))
         
         if not self.result:
-            self.logging("Failed test case " + self.name + ".")
+            logging.info("Failed test case " + self.name + ".")
         xml.append('</testcase>\n')
         self.xunit_section = "".join(xml)
 
@@ -88,7 +82,5 @@ class TestCase(object):
         # preparation of the device for the test.
         self.result = device.test(self)
         self.duration = datetime.datetime.now() - start_time
-        logging.info("Test Duration: {0}".format(self.duration))
+        logging.info("Test Duration: " + str(self.duration))
         self._build_xunit_section()
-
-# pylint: enable=too-few-public-methods

@@ -18,8 +18,8 @@ import re
 import time
 import logging
 
-from aft.tools.ssh import Ssh
-from aft.cutter import Cutter
+import aft.tools.ssh as Ssh
+import aft.cutter as Cutter
 from aft.devicestopology import DevicesTopology
 from aft.devices.pcdevice import PCDevice
 

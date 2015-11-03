@@ -48,6 +48,9 @@ def main(argv=None):
     return 0
 
 def parse_args():
+    """
+    Argument parsing
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--catalog", action = "store",
                         help = "Configuration file describing the supported device types",
@@ -55,10 +58,10 @@ def parse_args():
     parser.add_argument("--topology", action = "store",
                         help = "Configuration file describing the (physically) attached devices",
                         default = "/etc/aft/config/topology.cfg")
-    parser.add_argument("file_name", action = "store",
-                        help = "Image to write: a local file, "
-                             "compatible with the supported platforms.")
     parser.add_argument("machine", action = "store", help = "Model type")
+    parser.add_argument("file_name", action = "store",
+                        help = "Image to write: a local file, compatible" +
+                        "with the selected machine.")
     parser.add_argument("--noflash", action = "store_true", default = False,
                         help = "Skip device flashing")
     parser.add_argument("--notest", action = "store_true", default = False,

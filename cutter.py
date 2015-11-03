@@ -15,11 +15,8 @@ Base class for Cutter devices.
 """
 
 import abc
-from aft.cmdlinetool import CmdLineTool
 
-
-# pylint: disable=no-init
-class Cutter():
+class Cutter(object):
     """
     Common abstract base class for all the makes of cutters.
     """

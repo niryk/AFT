@@ -18,45 +18,45 @@ import re
 
 from aft.testcases.basictestcase import BasicTestCase
 
-#NOTE: egg-info was manually created!
-# pylint: disable=no-init
 class QATestCase(BasicTestCase):
     """
     QA testcase executor.
     """
-    _DEVICE_PARAMETERS = {"Gigabyte" : " --machine intel-corei7-64 " +
-                          "--test-manifest iottest/testplan/iottest.manifest",
-                          "GalileoV2" : " --machine intel-quark " + 
-                          "--test-manifest iottest/testplan/galileo.iottest.manifest",
-                          "Edison" : " --machine edison " +
-                          "--test-manifest iottest/testplan/iottest.manifest",
-                          "Minnowboard" : " --machine intel-corei7-64" +
-                          "--test-manifest iottest/testplan/minnowboard.iottest.manifest"}
+    _DEVICE_PARAMETERS = {"Gigabyte".lower(): " --machine intel-corei7-64 " + 
+                                              "--test-manifest iottest/testplan/iottest.manifest",
+                          "GalileoV2".lower(): " --machine intel-quark " + 
+                                               "--test-manifest " +
+                                               "iottest/testplan/galileo.iottest.manifest",
+                          "Edison".lower(): " --machine edison " + 
+                                            "--test-manifest iottest/testplan/iottest.manifest",
+                          "MinnowboardMAX".lower(): " --machine intel-corei7-64 " + 
+                                                    "--test-manifest " +
+                                                    "iottest/testplan/minnowmax.iottest.manifest"}
 
     def run(self, device):
         ip_address = device.get_ip()
 
         # Append --target-ip parameter
-        if not ("--target-ip" in self.parameters):
+        if not "--target-ip" in self.parameters:
             self.parameters += " " + "--target-ip " + ip_address
 
-        if not ("--pkg-arch" in self.parameters):
-            self.parameters += self._DEVICE_PARAMETERS[device.model]
+        if not "--pkg-arch" in self.parameters:
+            self.parameters += self._DEVICE_PARAMETERS[device.model.lower()]
 
-        self.run_local_command(device)
+        self.run_local_command()
         return self._result_has_zero_fails()
 
-    """
-    Ensure that self["result"] has no failed testcases.
-    """
     def _result_has_zero_fails(self):
+        """
+        Test if there are FAILED test cases in the QA-test case output
+        """
         logging.debug(self.output)
 #        qa_log_file = open("results-runtest.py.log", "r")
 #        qa_log = qa_log_file.read()
 #        qa_log_file.close()
         failed_matches = re.findall("FAILED", self.output)
         result = True
-        if (len(failed_matches) > 0):
+        if len(failed_matches) > 0:
             result = False
         return result
 
@@ -71,11 +71,10 @@ class QATestCase(BasicTestCase):
                    format(self.name,
                           '1' if self.result else '0',
                           self.duration))
-        
+
         xml.append('\n<system-out>')
         xml.append('<![CDATA[{0}]]>'.format(self.output))
         xml.append('</system-out>')
         xml.append('</testcase>\n')
         self.xunit_section = "".join(xml)
 
-# pylint: enable=no-init

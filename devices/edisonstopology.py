@@ -14,12 +14,6 @@
 Topology of Edison devices and cutters connected to the host Edison.
 """
 
-import re
-import time
-import logging
-
-from aft.cutter import Cutter
-from aft.devicestopology import DevicesTopology
 from aft.devices.edisondevice import EdisonDevice
 
 

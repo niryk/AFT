@@ -1,5 +1,5 @@
-# Copyright (c) 2013-14 Intel, Inc.
-# Author igor.stoppa@intel.com
+# Copyright (c) 2013-15 Intel, Inc.
+# Author topi.kuutela@intel.com
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -11,62 +11,63 @@
 # See the GNU General Public License for more details.
 
 """
-Class to interface with ssh-capable devices.
+Tools for remote controlling a device over ssh.
 """
 
+import aft.tools.misc as tools
 import os
-from aft.tools.ssl import Ssl
+import logging
+import subprocess32
 
-
-# pylint: disable=no-init
-class Ssh(Ssl):
+def _get_proxy_settings():
     """
-    ssh wrapper
+    Fetches proxy settings from the environment.
     """
-    DEFAULT_TIMEOUT = 5
+    proxy_env_variables = ["http_proxy", "https_proxy", "ftp_proxy", "no_proxy"]
 
-    @classmethod
-    def init(cls, timeout=DEFAULT_TIMEOUT):
-        """
-        Initialized for class variables
-        """
-        return super(Ssh, cls).init_class(command="ssh",
-                                          timeout=timeout)
-
-    @staticmethod
-    def _get_env(var):
-        """
-        Fetches settings from the environment.
-        """
+    proxy_env_command = ""
+    for var in proxy_env_variables:
         val = os.getenv(var)
-        if val is not None:
-            return "export " + var + '="' + val + '";'
-        return ""
+        if val != None and val != "":
+            proxy_env_command += "export " + var + '="' + val + '"; '
+    return proxy_env_command
 
-    @staticmethod
-    def _get_proxy_settings():
-        """
-        Fetches proxy settings from the environment.
-        """
-        PROXY_ENV = ["http_proxy", "https_proxy", "ftp_proxy", "no_proxy"]
+def test_ssh_connectivity(remote_ip, timeout = 10):
+    """
+    Test whether remote_ip is accessible over ssh.
+    """
+    try:
+        remote_execute(remote_ip, ["echo", "$?"], connect_timeout = timeout)
+        return True
+    except subprocess32.CalledProcessError as err:
+        logging.warning("Could not establish ssh-connection to " + remote_ip + 
+                        ". SSH return code: " + str(err.returncode) + ".")
+        return False
 
-        proxy_env = ""
-        for env in PROXY_ENV:
-            proxy_env += Ssh._get_env(env)
-        return (proxy_env,)
+def push(remote_ip, source, destination, timeout = 60, ignore_return_codes = None, user = "root"):
+    """
+    Transmit a file from local 'source' to remote 'destination' over SCP
+    """
+    scp_args = ["scp", source, 
+                user + "@" + str(remote_ip) + ":" + destination]
+    return tools.local_execute(scp_args, timeout, ignore_return_codes)
 
-# pylint: disable=too-many-arguments
-    @classmethod
-    def execute(cls, dev_ip, timeout=-1, command=(),
-                environment=(), user="root", verbose=False):
-        """
-        Executes ssh with custom parameters.
-        """
-        return super(Ssh, cls)._run(parms=cls._default_parms +
-                                    (user + "@" + str(dev_ip),) +
-                                    Ssh._get_proxy_settings() +
-                                    environment +
-                                    command, timeout=timeout,
-                                    verbose=verbose)
-# pylint: enable=too-many-arguments
-# pylint: enable=no-init
+def remote_execute(remote_ip, command, timeout = 60, ignore_return_codes = None,
+                   user = "root", connect_timeout = 15):
+    """
+    Execute a Bash command over ssh on a remote device with IP 'remote_ip'.
+    Returns combines stdout and stderr if there are no errors. On error raises
+    subprocess32 errors.
+    """
+    ssh_args = ["ssh", 
+                "-i", "".join([os.path.expanduser("~"), "/.ssh/id_rsa_testing_harness"]),
+                "-o", "UserKnownHostsFile=/dev/null",
+                "-o", "StrictHostKeyChecking=no",
+                "-o", "BatchMode=yes",
+                "-o", "LogLevel=ERROR",
+                "-o", "ConnectTimeout=" + str(connect_timeout),
+                user + "@" + str(remote_ip),
+                _get_proxy_settings(),]
+
+    return tools.local_execute(ssh_args + command, timeout, ignore_return_codes)
+
