@@ -17,6 +17,7 @@ Class representing a PC-like Device with an IP.
 import os
 import time
 import logging
+import json
 
 from aft.device import Device
 import aft.tools.ssh as ssh
@@ -45,7 +46,7 @@ class PCDevice(Device):
         super(PCDevice, self).__init__(device_descriptor=parameters,
                                        channel=channel)
         self._leases_file_name = parameters["leases_file_name"]
-        self._root_partition = parameters["root_partition"]
+        self._root_partition = self.get_root_partition_path(parameters)
         self._service_mode_name = parameters["service_mode"]
         self._test_mode_name = parameters["test_mode"]
 
@@ -62,6 +63,25 @@ class PCDevice(Device):
 
         self.dev_ip = None
         self._uses_hddimg = None
+
+# pylint: disable=no-self-use
+    def get_root_partition_path(self, parameters):
+        """
+        Select either the 'root_partition' config value to be the root_partition
+        or if the disk layout file exists, use the rootfs from it.
+        """
+        if not os.path.isfile(parameters["disk_layout_file"]):
+            logging.info("Disk layout file " + parameters["disk_layout_file"] +
+                         " doesn't exist. Using root_partition from config.")
+            return parameters["root_partition"]
+
+        layout_file = open(parameters["disk_layout_file"], "r")
+        disk_layout = json.load(layout_file)
+        # Convert Unicode -> ASCII
+        rootfs_partition = next(partition for partition in disk_layout.values() \
+                                if isinstance(partition, dict) and partition["name"] == "rootfs")
+        return os.path.join("/dev", "disk", "by-partuuid", rootfs_partition["uuid"])
+# pylint: enable=no-self-use
 
     def write_image(self, file_name):
         """
@@ -84,7 +104,13 @@ class PCDevice(Device):
                                                          self._IMG_NFS_MOUNT_POINT)
         self._flash_image(nfs_file_name=file_on_nfs)
         self._install_tester_public_key()
+
+    def test(self, test_case):
+        """
+        Boot to test-mode and execute testplan.
+        """
         self._enter_mode(self._test_mode)
+        return test_case.run(self)
 
     def get_ip(self):
         """
@@ -94,6 +120,10 @@ class PCDevice(Device):
         filtered_leases = [line for line in leases if self.dev_id in line]
         # dnsmasq.leases contains rows with "<mac> <ip> <hostname> <domain>"
         ip_addresses = [line.split()[2] for line in filtered_leases]
+
+        if len(ip_addresses) == 0:
+            logging.warning("No leases for MAC " + str(self.dev_id) +
+                            ". Hopefully this is a transient problem.")
 
         for ip_address in ip_addresses:
             result = ssh.test_ssh_connectivity(ip_address)
@@ -160,7 +190,10 @@ class PCDevice(Device):
         and in the specified mode.
         """
         sshout = ssh.remote_execute(dev_ip, ["cat", "/proc/version"])
-        return mode in sshout
+        if mode in sshout:
+            logging.info("Found device in " + mode + " mode.")
+            return True
+        return False
 # pylint: enable=no-self-use
 
     def _flash_image(self, nfs_file_name):
@@ -171,7 +204,7 @@ class PCDevice(Device):
         ssh.remote_execute(self.dev_ip, ["mount", self._IMG_NFS_MOUNT_POINT],
                            ignore_return_codes=[32])
 
-        logging.info("Writing " + str(nfs_file_name) + "to internal storage.")
+        logging.info("Writing " + str(nfs_file_name) + " to internal storage.")
         ssh.remote_execute(self.dev_ip, ["bmaptool", "copy", "--nobmap",
                                          nfs_file_name, self._target_device],
                            timeout=self._SSH_IMAGE_WRITING_TIMEOUT)
