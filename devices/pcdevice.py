@@ -207,7 +207,7 @@ class PCDevice(Device):
         logging.info("Writing " + str(nfs_file_name) + " to internal storage.")
         ssh.remote_execute(self.dev_ip, ["bmaptool", "copy", "--nobmap",
                                          nfs_file_name, self._target_device],
-                           timeout=self._SSH_IMAGE_WRITING_TIMEOUT)
+                           timeout = self._SSH_IMAGE_WRITING_TIMEOUT)
 
         logging.info("Partprobing.")
         ssh.remote_execute(self.dev_ip, ["partprobe"])

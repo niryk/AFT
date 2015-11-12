@@ -15,6 +15,7 @@ Convenience functions for (unix) command execution
 """
 
 import subprocess32
+import time
 
 def local_execute(command, timeout = 60, ignore_return_codes = None):
     """
@@ -25,13 +26,28 @@ def local_execute(command, timeout = 60, ignore_return_codes = None):
     process = subprocess32.Popen(command, universal_newlines=True,
                                  stdout = subprocess32.PIPE,
                                  stderr = subprocess32.STDOUT)
-    return_code = process.wait(timeout)
-    output = process.communicate()
+
+    # Loop until process returns or timeout expires.
+    start = time.time()
+    output = ""
+    return_code = None
+    while time.time() < start + timeout and return_code == None:
+        return_code = process.poll()
+        if return_code == None:
+            try:
+                output += process.communicate(timeout = 1)[0]
+            except subprocess32.TimeoutExpired:
+                pass
+    
+    if return_code == None:
+        # Time ran out but the process didn't end.
+        raise subprocess32.TimeoutExpired(cmd = command, output = output,
+                                          timeout = timeout)
 
     if ignore_return_codes == None:
         ignore_return_codes = []
     if return_code in ignore_return_codes or return_code == 0:
-        return output[0]
+        return output
     else:
         raise subprocess32.CalledProcessError(returncode = return_code,
                                               cmd = command, output = output)
