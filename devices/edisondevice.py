@@ -391,7 +391,7 @@ class EdisonDevice(Device):
         subprocess32.check_call(["ifconfig", interface, "up"])
         subprocess32.check_call(["ifconfig", interface, ip_subnet])
 
-    def _wait_until_ssh_visible(self, timeout=60):
+    def _wait_until_ssh_visible(self, timeout=180):
         """
         Wait until the DUT answers to ssh
         """
