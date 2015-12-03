@@ -37,6 +37,7 @@ def main(argv=None):
     device = device_manager.reserve()
     tester = Tester(device)
     if not args.noflash:
+        print "Flashing " + str(device.name) + "."
         device.write_image(args.file_name)
     if not args.notest:
         tester.execute()
