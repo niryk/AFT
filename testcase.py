@@ -1,6 +1,7 @@
-# Copyright (c) 2013, 2014, 2015 Intel, Inc.
+# Copyright (c) 2013-2015 Intel, Inc.
 # Author Antti Kervinen <antti.kervinen@intel.com>
-# Rearranged by igor.stoppa@intel.com
+# Rearranged by Igor Stoppa <igor.stoppa@intel.com>
+# Refactored by Topi Kuutela <topi.kuutela@intel.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the

@@ -1,5 +1,5 @@
-# Copyright (c) 2013, 2014, 2015 Intel, Inc.
-# Author topi.kuutela@intel.com
+# Copyright (c) 2013-2015 Intel, Inc.
+# Author Topi Kuutela <topi.kuutela@intel.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the

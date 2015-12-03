@@ -1,5 +1,5 @@
-# Copyright (c) 2013-14 Intel, Inc.
-# Author igor.stoppa@intel.com
+# Copyright (c) 2013-2015 Intel, Inc.
+# Author Igor Stoppa <igor.stoppa@intel.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -9,7 +9,6 @@
 # WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the GNU General Public License for more details.
-
 """
 Topology of PC-like devices and cutters connected to the host PC.
 """

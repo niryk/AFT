@@ -1,5 +1,5 @@
-# Copyright (c) 2015 Intel, Inc.
-# Author topi.kuutela@intel.com
+# Copyright (c) 2013-2015 Intel, Inc.
+# Author Topi Kuutela <topi.kuutela@intel.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -9,7 +9,6 @@
 # WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the GNU General Public License for more details.
-
 """
 Class representing a DUT which can be flashed from the testing harness and
 can get an IP-address.
