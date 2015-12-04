@@ -1,5 +1,6 @@
 # Copyright (c) 2013-2015 Intel, Inc.
 # Author Topi Kuutela <topi.kuutela@intel.com>
+# Author Erkka Kääriä <erkka.kaaria@intel.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -289,13 +290,13 @@ class EdisonDevice(Device):
                       str(timeout) + " seconds.")
 # pylint: disable=dangerous-default-value
 
-    def _dfu_call(self, alt, source, extras=[], attempts=4, timeout=600):
+    def _dfu_call(self, alt, source, extras=[], attempts=4, timeout=600, ignore_errors=False):
         """
         Call DFU-util successively with arguments until it succeeds
         """
-        flashing_log_file = open(self._FLASHER_OUTPUT_LOG, "a")
         attempt = 0
         while attempt < attempts:
+            flashing_log_file = open(self._FLASHER_OUTPUT_LOG, "a")
             self._wait_for_device()
             execution = subprocess32.Popen(["dfu-util", "-v", "--path", self._usb_path,
                                             "--alt", alt, "-D", source] + extras,
@@ -308,12 +309,24 @@ class EdisonDevice(Device):
                     continue
                 else:
                     flashing_log_file.close()
-                    return
+                    if ignore_errors:
+                        return
+                        
+                    # dfu-util always return 0. Check flash.log for missing "Done!"
+                    # to detect errors.                                         
+                    log_file = open(self._FLASHER_OUTPUT_LOG, "r")
+                    data = log_file.read()
+                    log_file.close()
+
+                    if "Done!" in data.split("\n")[-3:-1:1]:
+                        return
+                    else:
+                        break
 
             try:
                 execution.kill()
             except OSError as err:
-                if err.errno == 3:
+                if err.errno == 3: # 3 = errno.ESRCH = no such process
                     pass
                 else:
                     raise
@@ -337,11 +350,13 @@ class EdisonDevice(Device):
         self._reboot_device()
         logging.info("Flashing IFWI.")
         for i in range(0, 7):
+            # Flashing seems to always fail, so ignore errors. Compliant with
+            # Intel's flashall.sh script.
             stri = str(i)
             self._dfu_call("ifwi0" + stri, self.IFWI_DFU_FILE +
-                           "-0" + stri + "-dfu.bin")
+                           "-0" + stri + "-dfu.bin", ignore_errors = True) 
             self._dfu_call("ifwib0" + stri, self.IFWI_DFU_FILE +
-                           "-0" + stri + "-dfu.bin")
+                           "-0" + stri + "-dfu.bin", ignore_errors = True)
 
         logging.info("Flashing u-boot")
         self._dfu_call("u-boot0", "u-boot-edison.bin")
