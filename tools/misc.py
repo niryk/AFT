@@ -52,3 +52,9 @@ def local_execute(command, timeout = 60, ignore_return_codes = None):
     else:
         raise subprocess32.CalledProcessError(returncode = return_code,
                                               cmd = command, output = output)
+
+def subprocess_killer(process):
+    """
+    A function to kill subprocesses, intended to be used as 'atexit' handle.
+    """
+    process.kill()

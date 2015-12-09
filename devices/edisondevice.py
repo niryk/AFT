@@ -23,10 +23,11 @@ import time
 import netifaces
 import shutil
 import random
+import atexit
 
 from aft.device import Device
+import aft.tools.misc as misc
 import aft.tools.ssh as ssh
-
 
 def _make_directory(directory):
     """
@@ -384,9 +385,9 @@ class EdisonDevice(Device):
                                                    os.path.pardir, "tools",
                                                    "nicenabler.py"),
                                       self._usb_path, self._host_ip + "/30"])
+        atexit.register(misc.subprocess_killer, enabler)
         self._wait_until_ssh_visible()
         tester_result = test_case.run(self)
-        enabler.kill()
         return tester_result
 
     def execute(self, command, timeout, user="root", verbose=False):
