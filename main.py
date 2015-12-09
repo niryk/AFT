@@ -64,6 +64,9 @@ def parse_args():
     parser.add_argument("file_name", action = "store",
                         help = "Image to write: a local file, compatible" +
                         "with the selected machine.")
+    parser.add_argument("--device", type = str, nargs = "?", action = "store",
+                        default = "", help = "Specify the individual physical " +
+                        "device by name.")
     parser.add_argument("--noflash", action = "store_true", default = False,
                         help = "Skip device flashing")
     parser.add_argument("--notest", action = "store_true", default = False,

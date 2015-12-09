@@ -67,6 +67,10 @@ class DevicesManager(object):
         configs = []
 
         for device_title in topology_config.sections():
+            # Filter the device which was requested by the --device argument if necessary
+            if args.device != "" and args.device != device_title:
+                continue
+
             device_entry = dict(topology_config.items(device_title))
             device_entry["name"] = device_title
             if device_entry["model"].lower() != args.machine.lower():
