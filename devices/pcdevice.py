@@ -210,7 +210,7 @@ class PCDevice(Device):
                            timeout = self._SSH_IMAGE_WRITING_TIMEOUT)
 
         logging.info("Partprobing.")
-        ssh.remote_execute(self.dev_ip, ["partprobe"])
+        ssh.remote_execute(self.dev_ip, ["partprobe", self._target_device])
 
     def _mount_single_layer(self):
         """
