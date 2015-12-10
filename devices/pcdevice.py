@@ -208,9 +208,14 @@ class PCDevice(Device):
         ssh.remote_execute(self.dev_ip, ["bmaptool", "copy", "--nobmap",
                                          nfs_file_name, self._target_device],
                            timeout = self._SSH_IMAGE_WRITING_TIMEOUT)
-
+        # This sequence either delays the system long enough to settle the
+        # /dev/disk/by-partuuid, or actually settles it.
         logging.info("Partprobing.")
         ssh.remote_execute(self.dev_ip, ["partprobe", self._target_device])
+        ssh.remote_execute(self.dev_ip, ["sync"])
+        ssh.remote_execute(self.dev_ip, ["udevadm", "trigger"])
+        ssh.remote_execute(self.dev_ip, ["udevadm", "settle"])
+        ssh.remote_execute(self.dev_ip, ["udevadm", "control", "-S"])
 
     def _mount_single_layer(self):
         """
