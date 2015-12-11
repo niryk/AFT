@@ -15,8 +15,12 @@
 Class representing a DUT.
 """
 
-
+import os
+import atexit
+import subprocess32
 import abc
+
+import aft.tools.misc as misc
 
 class Device(object):
     """
@@ -37,6 +41,25 @@ class Device(object):
         """
         Writes the specified image to the device.
         """
+
+    def record_serial(self):
+        """
+        Start a serialrecorder.py subprocess and add its killer
+        atexit handles
+        """
+        if not ("serial_port" in self.parameters
+                and "serial_bauds" in self.parameters):
+            raise IOError("Configuration for device " + self.name + " doesn't include " +
+                          "serial_port and/or serial_bauds.")
+
+        recorder = subprocess32.Popen(["python",
+                                       os.path.join(os.path.dirname(__file__),
+                                                    os.path.pardir, "tools",
+                                                    "serialrecorder.py"),
+                                       self.parameters["serial_port"], "serial.log",
+                                       "--rate", self.parameters["serial_bauds"]])
+        atexit.register(misc.subprocess_killer, recorder)
+
 
     def test(self, test_case):
         """

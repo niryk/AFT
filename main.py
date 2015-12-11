@@ -37,6 +37,8 @@ def main(argv=None):
     device_manager = DevicesManager(args)
     device = device_manager.reserve()
     tester = Tester(device)
+    if args.record:
+        device.record_serial()
     if not args.noflash:
         print "Flashing " + str(device.name) + "."
         device.write_image(args.file_name)
@@ -67,6 +69,9 @@ def parse_args():
     parser.add_argument("--device", type = str, nargs = "?", action = "store",
                         default = "", help = "Specify the individual physical " +
                         "device by name.")
+    parser.add_argument("--record", action = "store_true", default = False,
+                        help = "Record the serial output during testing to a file " +
+                        "from the serial_port and serial_bauds defined in configuration.")
     parser.add_argument("--noflash", action = "store_true", default = False,
                         help = "Skip device flashing")
     parser.add_argument("--notest", action = "store_true", default = False,
