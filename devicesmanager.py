@@ -90,7 +90,8 @@ class DevicesManager(object):
             raise IOError("Could not construct any device configurations for device of " +
                           "type " + str(args.machine) + ". Does the topology file (" +
                           topology_config_file + ") have any sections with model = " +
-                          str(args.machine) + "?")
+                          str(args.machine) + ", or did you specify a --device which " +
+                          "doesn't exist?")
         logging.info("Built configuration sets for " + str(len(configs)) +
                      " devices of type " + str(args.machine))
 
