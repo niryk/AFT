@@ -23,15 +23,14 @@ import fcntl
 import errno
 
 import aft.errors as errors
+import aft.config as config
 import aft.devicefactory as devicefactory
 
 class DevicesManager(object):
     """Class handling devices connected to the same host PC"""
 
-    __CFG_BASE_PATH = '/etc/aft/config'
-    __PLATFORM_FILE_NAME = os.path.join(__CFG_BASE_PATH, "platform.cfg")
+    __PLATFORM_FILE_NAME = "/etc/aft/devices/platform.cfg"
 
-    _LOCK_ROOT = os.getenv("AFT_LOCKROOT", "/var/lock/")
     # Construct all device objects of the correct machine type based on the topology config file.
     # args = parsed command line arguments
     def __init__(self, args):
@@ -45,9 +44,9 @@ class DevicesManager(object):
 
         device_configs = self._construct_configs(args)
         self._devices = []
-        for config in device_configs:
-            cutter = devicefactory.build_cutter(config)
-            device = devicefactory.build_device(config, cutter)
+        for device_config in device_configs:
+            cutter = devicefactory.build_cutter(device_config)
+            device = devicefactory.build_device(device_config, cutter)
             self._devices.append(device)
 
     def _construct_configs(self, args):
@@ -110,7 +109,7 @@ class DevicesManager(object):
                 try:
                     # This is a non-atomic operation which may cause trouble
                     # Using a locking database system could be a viable fix.
-                    self._lockfile = os.fdopen(os.open(os.path.join(self._LOCK_ROOT,
+                    self._lockfile = os.fdopen(os.open(os.path.join(config.LOCK_FILE,
                                                                     "aft_" + device.dev_id),
                                                        os.O_WRONLY | os.O_CREAT, 0660), "w")
                     fcntl.flock(self._lockfile, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -138,5 +137,5 @@ class DevicesManager(object):
         if self._lockfile:
             self._lockfile.close()
         if self._reserved_device:
-            os.unlink(os.path.join(self._LOCK_ROOT,
+            os.unlink(os.path.join(config.LOCK_FILE,
                                    "aft_" + self._reserved_device.dev_id))

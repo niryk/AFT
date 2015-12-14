@@ -20,6 +20,7 @@ import logging
 import json
 import subprocess32
 
+import aft.config as config
 from aft.device import Device
 import aft.errors as errors
 import aft.tools.ssh as ssh
@@ -90,9 +91,9 @@ class PCDevice(Device):
         Method for writing an image to a device.
         """
         # NOTE: it is expected that the image is located somewhere
-        # underneath /home/tester, therefore symlinks outside of it
-        # will not work
-        # The /home/tester path is exported as nfs and mounted remotely as
+        # underneath config.NFS_FOLDER (default: /home/tester),
+        # therefore symlinks outside of it will not work
+        # The config.NFS_FOLDER path is exported as nfs and mounted remotely as
         # _IMG_NFS_MOUNT_POINT
 
         # Bubblegum fix to support both .hddimg and .hdddirect at the same time
@@ -102,7 +103,7 @@ class PCDevice(Device):
             self._uses_hddimg = False
 
         self._enter_mode(self._service_mode)
-        file_on_nfs = os.path.abspath(file_name).replace("home/tester",
+        file_on_nfs = os.path.abspath(file_name).replace(config.NFS_FOLDER,
                                                          self._IMG_NFS_MOUNT_POINT)
         self._flash_image(nfs_file_name=file_on_nfs)
         self._install_tester_public_key()
@@ -218,8 +219,9 @@ class PCDevice(Device):
         ssh.remote_execute(self.dev_ip, ["bmaptool", "copy", "--nobmap",
                                          nfs_file_name, self._target_device],
                            timeout = self._SSH_IMAGE_WRITING_TIMEOUT)
-        # This sequence either delays the system long enough to settle the
-        # /dev/disk/by-partuuid, or actually settles it.
+        # Flashing the same file as already on the disk causes non-blocking removal and 
+        # re-creation of /dev/disk/by-partuuid/ files. This sequence either delays enough
+        # or actually settles it.
         logging.info("Partprobing.")
         ssh.remote_execute(self.dev_ip, ["partprobe", self._target_device])
         ssh.remote_execute(self.dev_ip, ["sync"])

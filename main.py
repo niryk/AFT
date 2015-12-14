@@ -18,6 +18,7 @@ Main entry point for aft.
 import sys
 import logging
 import argparse
+import aft.config as config
 from aft.devicesmanager import DevicesManager
 from aft.tester import Tester
 
@@ -25,7 +26,9 @@ def main(argv=None):
     """
     Entry point for library-like use.
     """
-    logging.basicConfig(filename='aft.log', level=logging.DEBUG,
+    config.parse()
+
+    logging.basicConfig(filename=config.AFT_LOG_NAME, level=logging.DEBUG,
                         format='%(asctime)s - %(name)s - '
                                '%(levelname)s - %(message)s')
 
@@ -58,10 +61,10 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--catalog", action = "store",
                         help = "Configuration file describing the supported device types",
-                        default = "/etc/aft/config/catalog.cfg")
+                        default = "/etc/aft/devices/catalog.cfg")
     parser.add_argument("--topology", action = "store",
                         help = "Configuration file describing the (physically) attached devices",
-                        default = "/etc/aft/config/topology.cfg")
+                        default = "/etc/aft/devices/topology.cfg")
     parser.add_argument("machine", action = "store", help = "Model type")
     parser.add_argument("file_name", action = "store",
                         help = "Image to write: a local file, compatible" +

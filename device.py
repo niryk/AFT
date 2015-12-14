@@ -55,8 +55,7 @@ class Device(object):
                                                "serial_port and/or serial_bauds.")
 
         recorder = subprocess32.Popen(["python",
-                                       os.path.join(os.path.dirname(__file__),
-                                                    os.path.pardir, "tools",
+                                       os.path.join(os.path.dirname(__file__), "tools",
                                                     "serialrecorder.py"),
                                        self.parameters["serial_port"], "serial.log",
                                        "--rate", self.parameters["serial_bauds"]])

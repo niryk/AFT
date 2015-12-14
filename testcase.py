@@ -16,7 +16,6 @@
 Class representing a Test Case.
 """
 
-import os
 import datetime
 import logging
 import abc
@@ -28,7 +27,6 @@ class TestCase(object):
     Class providing the foundations for a Test Case.
     """
     __metaclass__ = abc.ABCMeta
-    _TEST_EXEC_ROOT = os.getenv("AFT_EXECROOT", "./aft_results.")
 
     def __init__(self, config):
         self.name = config["name"]
