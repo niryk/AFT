@@ -39,7 +39,7 @@ setup(
                              "devices/*.py", "devices/data/*",
                              "testcases/*.py",
                              "tools/*.py"]},
-    install_requires = ["netifaces", "subprocess32"],
+    install_requires = ["netifaces", "subprocess32", "unittest-xml-reporting"],
     entry_points = { "console_scripts" : ["aft=aft.main:main"] },
     data_files = [("/etc/aft/config/", CONFIG_FILES),
                   ("/etc/aft/test_plan/", TEST_PLANS)])
