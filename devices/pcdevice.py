@@ -18,6 +18,7 @@ import os
 import time
 import logging
 import json
+import subprocess32
 
 from aft.device import Device
 import aft.tools.ssh as ssh
@@ -189,11 +190,19 @@ class PCDevice(Device):
         Check if the device with given ip is responsive to ssh
         and in the specified mode.
         """
-        sshout = ssh.remote_execute(dev_ip, ["cat", "/proc/version"])
-        if mode in sshout:
-            logging.info("Found device in " + mode + " mode.")
-            return True
-        return False
+        try:
+            sshout = ssh.remote_execute(dev_ip, ["cat", "/proc/version"])
+            if mode in sshout:
+                logging.info("Found device in " + mode + " mode.")
+                return True
+            return False
+        except subprocess32.CalledProcessError, err:
+            logging.warning("Failed verifying the device mode with command: '" + str(err.cmd) +
+                            "' failed with error code: '" + str(err.returncode) +
+                            "' and output: '" + str(err.output) + "'.")
+            return False
+        except Exception, err:
+            raise
 # pylint: enable=no-self-use
 
     def _flash_image(self, nfs_file_name):
