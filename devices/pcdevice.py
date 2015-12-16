@@ -21,6 +21,7 @@ import json
 import subprocess32
 
 from aft.device import Device
+import aft.errors as errors
 import aft.tools.ssh as ssh
 
 from pem.main import main as pem_main
@@ -168,7 +169,7 @@ class PCDevice(Device):
 
         logging.critical("Unable to get device " +
                          self.dev_id + " in mode " + mode["name"])
-        raise LookupError("Could not set the device in mode " + mode["name"])
+        raise errors.AFTDeviceError("Could not set the device in mode " + mode["name"])
 
     def _wait_for_responsive_ip(self):
         """

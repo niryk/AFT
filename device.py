@@ -20,6 +20,7 @@ import atexit
 import subprocess32
 import abc
 
+import aft.errors as errors
 import aft.tools.misc as misc
 
 class Device(object):
@@ -49,8 +50,9 @@ class Device(object):
         """
         if not ("serial_port" in self.parameters
                 and "serial_bauds" in self.parameters):
-            raise IOError("Configuration for device " + self.name + " doesn't include " +
-                          "serial_port and/or serial_bauds.")
+            raise errors.AFTConfigurationError("Configuration for device " +
+                                               self.name + " doesn't include " +
+                                               "serial_port and/or serial_bauds.")
 
         recorder = subprocess32.Popen(["python",
                                        os.path.join(os.path.dirname(__file__),

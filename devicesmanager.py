@@ -22,6 +22,7 @@ import sys
 import fcntl
 import errno
 
+import aft.errors as errors
 import aft.devicefactory as devicefactory
 
 class DevicesManager(object):
@@ -87,11 +88,12 @@ class DevicesManager(object):
             configs.append(device_params)
 
         if len(configs) == 0:
-            raise IOError("Could not construct any device configurations for device of " +
-                          "type " + str(args.machine) + ". Does the topology file (" +
-                          topology_config_file + ") have any sections with model = " +
-                          str(args.machine) + ", or did you specify a --device which " +
-                          "doesn't exist?")
+            raise errors.AFTConfigurationError("Could not construct any device configurations " +
+                                               "for device of type " + str(args.machine) +
+                                               ". Does the topology file (" +
+                                               topology_config_file + ") have any sections with " +
+                                               "model = " + str(args.machine) + ", or did you " +
+                                               "specify a --device which doesn't exist?")
         logging.info("Built configuration sets for " + str(len(configs)) +
                      " devices of type " + str(args.machine))
 
@@ -125,8 +127,8 @@ class DevicesManager(object):
                         sys.exit(-1)
             logging.info("All devices busy ... waiting 10 seconds and trying again.")
             time.sleep(10)
-        raise IOError("Could not reserve a " + self._machine_type + "-device in " +
-                      str(timeout) + " seconds.")
+        raise errors.AFTTimeoutError("Could not reserve a " + self._machine_type +
+                                     "-device in " + str(timeout) + " seconds.")
 
     def release(self):
         """

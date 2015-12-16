@@ -21,6 +21,7 @@ import time
 import ConfigParser
 import logging
 
+import aft.errors as errors
 import aft.testcasefactory
 
 class Tester(object):
@@ -41,8 +42,9 @@ class Tester(object):
         test_plan_config.read(test_plan_file)
 
         if len(test_plan_config.sections()) == 0:
-            raise IOError("Test plan " + str(test_plan_name) + " (" + str(test_plan_file) +
-                          ") doesn't have any test cases. Does the file exist?")
+            raise errors.AFTConfigurationError("Test plan " + str(test_plan_name) +
+                                               " (" + str(test_plan_file) + ") doesn't " +
+                                               "have any test cases. Does the file exist?")
 
         for test_case_name in test_plan_config.sections():
             test_case_config = dict(test_plan_config.items(test_case_name))

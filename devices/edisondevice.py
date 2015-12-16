@@ -26,6 +26,7 @@ import random
 import atexit
 
 from aft.device import Device
+import aft.errors as errors
 import aft.tools.misc as misc
 import aft.tools.ssh as ssh
 
@@ -287,8 +288,8 @@ class EdisonDevice(Device):
                 return
             else:
                 continue
-        raise IOError("Could not find the device in DFU-mode in " +
-                      str(timeout) + " seconds.")
+        raise errors.AFTDeviceError("Could not find the device in DFU-mode in " +
+                                    str(timeout) + " seconds.")
 # pylint: disable=dangerous-default-value
 
     def _dfu_call(self, alt, source, extras=[], attempts=4, timeout=600, ignore_errors=False):
@@ -339,7 +340,7 @@ class EdisonDevice(Device):
                             str(attempt) + "/" + str(attempts) + " time.")
             self._reboot_device()
         flashing_log_file.close()
-        raise IOError("Flashing failed 4 times. Raising error (aborting).")
+        raise errors.AFTDeviceError("Flashing failed 4 times. Raising error (aborting).")
 # pylint: enable=dangerous-default-value
 
     IFWI_DFU_FILE = "edison_ifwi-dbg"
@@ -416,8 +417,9 @@ class EdisonDevice(Device):
                 return
         logging.critical("Failed to establish ssh-connection in " +
                          str(timeout) + " seconds after enabling the network interface.")
-        raise IOError("Failed to establish ssh-connection in " +
-                      str(timeout) + " seconds after enabling the network interface.")
+        raise errors.AFTConnectionError("Failed to establish ssh-connection in " +
+                                        str(timeout) + " seconds after enabling " +
+                                        "the network interface.")
 
     def get_ip(self):
         return self._dut_ip
@@ -450,6 +452,6 @@ class EdisonDevice(Device):
                                     " IOERROR: " + str(err.errno) + " " + err.message)
             time.sleep(1)
 
-        raise ValueError("Could not find a network interface from USB-path " +
-                         self._usb_path + " in 120 seconds.")
+        raise errors.AFTDeviceError("Could not find a network interface from USB-path " +
+                                    self._usb_path + " in 120 seconds.")
 # pylint: enable=too-many-instance-attributes
