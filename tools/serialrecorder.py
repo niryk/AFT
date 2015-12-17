@@ -21,15 +21,17 @@ import time
 import re
 
 TERMINATE_FLAG = False
-def signal_handler(signal, frame):
+# pylint: disable=unused-argument
+def signal_handler(sig, frame):
     """
-    Terminal signal handler
+    Terminate signal handler
     """
     # pylint: disable=global-statement
     global TERMINATE_FLAG
     # pylint: enable=global-statement
     print "Terminating serial recorder."
     TERMINATE_FLAG = True
+# pylint: enable=unused-argument
 
 def main():
     """
@@ -61,9 +63,10 @@ def record(serial_stream, output):
         try:
             read_buffer += serial_stream.read(4096)
         except serial.SerialException, err:
-            if err.num == 4: # read failed
-                serial_stream.close()
-                serial_stream.open()
+            # This is a hacky way to fix random, frequent, read errors. May catch more than
+            # intended.
+            serial_stream.close()
+            serial_stream.open()
             continue
 
         last_newline = read_buffer.rfind("\n")
@@ -73,6 +76,7 @@ def record(serial_stream, output):
         text_batch = read_buffer[0:last_newline + 1]
         read_buffer = read_buffer[last_newline + 1:-1]
 
+        # Remove terminal control codes
         text_batch = re.sub(r'\x1b\[([0-9,A-Z]{1,2}(;[0-9]{1,2})?(;[0-9]{3})?)?[m|K]?',
                             '', text_batch)
 
