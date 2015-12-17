@@ -74,6 +74,12 @@ def record(serial_stream, output):
         timed_batch = text_batch.replace("\n", "\n[" + str(time_now) + "] ")
         output.write(timed_batch)
         if TERMINATE_FLAG:
+            # Write out the remaining buffer.
+            if read_buffer:
+                read_buffer = re.sub(r'\x1b\[([0-9,A-Z]{1,2}(;[0-9]{1,2})?(;[0-9]{3})?)?[m|K]?',
+                            '', text_batch)
+                output.write(read_buffer)
+            output.flush()
             return
 
 if __name__ == '__main__':
