@@ -57,4 +57,4 @@ def subprocess_killer(process):
     """
     A function to kill subprocesses, intended to be used as 'atexit' handle.
     """
-    process.kill()
+    process.terminate()

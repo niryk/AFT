@@ -21,7 +21,7 @@ import time
 import re
 
 TERMINATE_FLAG = False
-def signal_handler():
+def signal_handler(signal, frame):
     """
     Terminal signal handler
     """
@@ -36,7 +36,6 @@ def main():
     Initialization.
     """
     signal.signal(signal.SIGTERM, signal_handler)
-    signal.signal(signal.SIGINT, signal_handler)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("port", type=str, help="Serial port to read from (e.g. /dev/ttyUSB0)")
@@ -50,6 +49,7 @@ def main():
     print "Starting recording from " + str(args.port) + " to " + str(args.output) + "."
     record(serial_stream, output_file)
 
+    serial_stream.close()
     output_file.close()
 
 def record(serial_stream, output):
@@ -58,7 +58,13 @@ def record(serial_stream, output):
     """
     read_buffer = ""
     while True:
-        read_buffer += serial_stream.read(4096)
+        try:
+            read_buffer += serial_stream.read(4096)
+        except serial.SerialException, err:
+            if err.num == 4: # read failed
+                serial_stream.close()
+                serial_stream.open()
+            continue
 
         last_newline = read_buffer.rfind("\n")
         if last_newline == -1 and not TERMINATE_FLAG:
@@ -73,11 +79,12 @@ def record(serial_stream, output):
         time_now = time.time()
         timed_batch = text_batch.replace("\n", "\n[" + str(time_now) + "] ")
         output.write(timed_batch)
+        output.flush()
         if TERMINATE_FLAG:
             # Write out the remaining buffer.
             if read_buffer:
                 read_buffer = re.sub(r'\x1b\[([0-9,A-Z]{1,2}(;[0-9]{1,2})?(;[0-9]{3})?)?[m|K]?',
-                            '', text_batch)
+                                     '', text_batch)
                 output.write(read_buffer)
             output.flush()
             return
