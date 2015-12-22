@@ -5,8 +5,8 @@ Overview
 --------
 AFT is a tool for automated provisioning and testing.
 Its goal is to both standardize and simplify the testing on a variety
-of devices, while keeping minimal the cost and complexity of the setup.
-In particular, it strives to use only inexpensive off-the shelf
+of devices, while keeping minimal the cost and the complexity of the
+setup. In particular, it strives to use only inexpensive off-the shelf
 HW components and to keep one single configuration that can be used
 by both large testing farms and individual testers/developers.
 
@@ -16,15 +16,11 @@ at https://github.com/01org-AutomatedFlasherTester
 
 How it works
 ------------
-At very high level, the tool receives as input the name of a file
-containing the SW image to be tested and a test plan.
+At very high level, the tool receives as input the device type, 
+a name of a file containing the SW image to be tested and a test plan.
 
-It then proceeds to assess if the SW image can be deployed on one of
-the devices connected to the testing harness (the machine running AFT).
+The tester will attempt to reserve a compatible device and, once the
+device becomes available, flashes the image.
 
-If the image is supported, the tester will attempt to reserve a 
-compatible device and, once the device becomes available, deploy the
-image.
-
-If the image deploys successfully and can also boot the device, then
-the system will run the requested test plan.
+If the image deploys successfully and can also boot the device, the
+system will run the requested test plan.

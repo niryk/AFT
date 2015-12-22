@@ -32,7 +32,7 @@ CONFIG_FILES =  [filename for filename in CONFIG_FILES if CONFIG_FILTER(filename
 
 setup(
     name = "aft",
-    version = "1.0.0a4",
+    version = "1.0.0",
     description = "Automated Flasher Tester",
     author = "Igor Stoppa & Topi Kuutela",
     author_email = "igor.stoppa@intel.com & topi.kuutela@intel.com",
