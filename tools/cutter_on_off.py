@@ -34,9 +34,11 @@ ACTION = sys.argv[2]
 SER = serial.Serial(PORT, 9600)
 # disconnect
 if str(ACTION) == '0' :
+    SER.write('\x6E')
     SER.write('\xFE\x05\x00\x00\x00\x00\xD9\xC5')
 # connect
 elif str(ACTION) == '1' :
+    SER.write('\x64')
     SER.write('\xFE\x05\x00\x00\xFF\x00\x98\x35')
 
 else:

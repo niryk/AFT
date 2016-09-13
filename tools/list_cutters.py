@@ -22,7 +22,7 @@ try:
 except ImportError:
     import subprocess as subprocess32
 
-ACCEPTED_DEVICES = [("0b00", "3070"), ("10c4", "ea60")]
+ACCEPTED_DEVICES = [("0b00", "3070"), ("10c4", "ea60"),("04d8","ffee")]
 
 def vidpid_filter(device):
     """
